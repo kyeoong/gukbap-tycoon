@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="욕쟁이 할매가 되어 공손한 손님에겐 국밥을, 싸가지 없는 손님에겐 국자를!">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>욕쟁이 할매 국밥</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&family=Nanum+Brush+Script&display=swap">
+<style>
+/* Layout: one-screen game — HUD strip, a lit 국밥집 counter scene seen from 할매's side, two big action buttons */
+:root{
+  --night:#1a1310; --wood:#6b4329; --wood-d:#3d2618; --wood-l:#8a5a38;
+  --paper:#f1e4c6; --ink:#2a1d15; --red:#c7372c; --red-d:#8f2219;
+  --steel:#c3c9cc; --text:#f7eddc; --muted:#bfa688; --ok:#8fbf63; --gold:#f0c24a;
+  --f-sign:"Black Han Sans","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-brush:"Nanum Brush Script","Gowun Dodum","Apple SD Gothic Neo",cursive;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--text);font-family:var(--f-body);overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.app{height:100%;box-sizing:border-box;max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:10px;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* HUD */
+.hud{display:grid;grid-template-columns:1.3fr 1fr auto auto;gap:12px;align-items:center}
+.hud small{display:block;font-size:.72rem;color:var(--muted);letter-spacing:.06em}
+.hud b{font-family:var(--f-sign);font-weight:400;font-size:1.25rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.day b{color:var(--gold)}
+.timebar{height:8px;border-radius:4px;background:#3a2a20;overflow:hidden;margin-top:5px}
+.timebar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--red));transform-origin:left;transform:scaleX(1)}
+#hearts{color:var(--red);letter-spacing:2px}
+#hearts.hit{animation:hit .5s}
+@keyframes hit{30%{transform:scale(1.35)}}
+.mute{font:inherit;font-size:.78rem;color:var(--muted);background:none;border:1px solid #5a4232;border-radius:8px;padding:6px 8px;cursor:pointer}
+.mute:focus-visible,.act:focus-visible,.btn:focus-visible,.shop button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* Stage */
+.stage{position:relative;flex:1;min-height:360px;border-radius:14px;overflow:hidden;isolation:isolate;
+  background:
+    radial-gradient(ellipse at 50% -10%,rgba(255,200,120,.35),transparent 60%),
+    repeating-linear-gradient(90deg,#4a2f1f 0 46px,#432a1b 46px 48px,#523422 48px 94px,#3b2518 94px 96px);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.55)}
+.tags{position:absolute;left:3%;top:0;display:flex;gap:6px;z-index:1}
+.tag{background:var(--paper);color:var(--ink);width:30px;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  box-shadow:0 3px 6px rgba(0,0,0,.4);border-top:4px solid var(--red-d)}
+.tag b{writing-mode:vertical-rl;font-family:var(--f-brush);font-weight:400;font-size:1.25rem;line-height:1;letter-spacing:1px}
+.tag i{font-style:normal;font-size:.62rem;font-variant-numeric:tabular-nums;writing-mode:vertical-rl}
+.sign{position:absolute;right:3%;top:5%;z-index:1;background:var(--wood-d);border:3px solid var(--wood-l);padding:6px 10px;text-align:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.5);transform:rotate(2deg)}
+.sign b{display:block;font-family:var(--f-sign);font-weight:400;color:var(--paper);font-size:1rem;letter-spacing:.04em}
+.sign i{font-style:normal;font-size:.62rem;color:var(--muted);letter-spacing:.12em}
+
+.cwrap{position:absolute;left:50%;bottom:17%;height:56%;aspect-ratio:200/262;max-width:100%;transform:translateX(-50%);z-index:2}
+.cbody{width:100%;height:100%;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s}
+.cbody svg{width:100%;height:100%;display:block}
+.cbody.off-right{transform:translateX(160%);transition:none}
+.cbody.off-left{transform:translateX(-170%);opacity:.2}
+.cbody.fly{animation:fly .7s cubic-bezier(.3,.6,.4,1) forwards}
+@keyframes fly{to{transform:translate(90%,-140%) rotate(620deg) scale(.5);opacity:0}}
+.stars{animation:spin 1s linear infinite;transform-origin:100px 50px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.bubble{position:absolute;left:50%;top:4%;transform:translateX(-50%);width:max-content;max-width:min(64%,420px);z-index:5;
+  background:var(--paper);color:var(--ink);border-radius:16px;padding:12px 16px 10px;box-shadow:0 6px 16px rgba(0,0,0,.45);
+  font-size:clamp(1rem,2.6vw,1.2rem);line-height:1.45;text-wrap:balance;word-break:keep-all}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-11px;margin-left:-10px;border:11px solid transparent;border-bottom:0;border-top-color:var(--paper)}
+.bubble.pop{animation:pop .25s ease-out}
+@keyframes pop{from{transform:translateX(-50%) scale(.7);opacity:0}}
+.pat{height:5px;border-radius:3px;background:#d8c7a3;margin-top:8px;overflow:hidden}
+.pat i{display:block;height:100%;background:var(--ok);transform-origin:left}
+.pat.low i{background:var(--red)}
+
+.counter{position:absolute;left:0;right:0;bottom:0;height:20%;z-index:3;
+  background:linear-gradient(#e2e6e8,#9da5a9 10px,var(--wood) 11px,var(--wood-d));box-shadow:0 -6px 14px rgba(0,0,0,.4)}
+.bowl{position:absolute;left:4%;bottom:5%;width:24%;max-width:150px;z-index:4}
+.bowl svg,.ladle svg{width:100%;height:100%;display:block}
+.steam path{animation:steam 2.4s ease-in-out infinite;opacity:.0}
+.steam path:nth-child(2){animation-delay:.8s}.steam path:nth-child(3){animation-delay:1.6s}
+@keyframes steam{20%{opacity:.7}100%{transform:translateY(-14px);opacity:0}}
+.ladle{position:absolute;right:2%;bottom:-6%;height:62%;aspect-ratio:140/260;z-index:4;transform-origin:58% 80%;transform:rotate(10deg)}
+.ladle.swing{animation:swing .45s cubic-bezier(.3,.7,.3,1)}
+@keyframes swing{35%{transform:translate(-40%,-26%) rotate(-68deg)}55%{transform:translate(-36%,-22%) rotate(-58deg)}100%{transform:rotate(10deg)}}
+
+.burst{position:absolute;z-index:6;font-family:var(--f-sign);font-size:clamp(2.2rem,7vw,3.4rem);color:var(--gold);pointer-events:none;
+  -webkit-text-stroke:3px var(--ink);paint-order:stroke;transform:translate(-50%,-50%);animation:burst .6s forwards}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(.3) rotate(-15deg)}30%{transform:translate(-50%,-50%) scale(1.25) rotate(6deg)}100%{transform:translate(-50%,-90%) scale(1);opacity:0}}
+.float{position:absolute;left:50%;top:40%;z-index:6;font-family:var(--f-sign);font-size:1.15rem;color:var(--gold);white-space:nowrap;pointer-events:none;
+  -webkit-text-stroke:2px var(--ink);paint-order:stroke;animation:rise 1.2s forwards}
+@keyframes rise{from{transform:translate(-50%,10px);opacity:0}15%{opacity:1}to{transform:translate(-50%,-50px);opacity:0}}
+.shout{position:absolute;left:50%;bottom:21%;z-index:6;width:max-content;max-width:86%;text-align:center;pointer-events:none;
+  font-family:var(--f-brush);font-size:clamp(1.8rem,5.4vw,2.6rem);line-height:1.05;color:var(--paper);
+  -webkit-text-stroke:5px var(--ink);paint-order:stroke;transform:translateX(-50%) rotate(-3deg);animation:shout 1.5s forwards}
+.shout.bonk{color:#ff6a52}.shout.sorry{color:#c9b9a0}
+@keyframes shout{0%{transform:translateX(-50%) rotate(-3deg) scale(.5);opacity:0}12%{transform:translateX(-50%) rotate(-3deg) scale(1.08);opacity:1}75%{opacity:1}100%{opacity:0}}
+.note{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);z-index:6;width:max-content;max-width:62%;text-align:center;
+  background:rgba(26,19,16,.88);border:1px solid #6b4a36;border-radius:10px;padding:6px 12px;font-size:.85rem;line-height:1.4;animation:fade 2.6s forwards}
+.note.good{border-color:var(--ok);color:#d9efc4}.note.bad{border-color:var(--red);color:#ffd7cf}
+@keyframes fade{0%{opacity:0}8%{opacity:1}80%{opacity:1}100%{opacity:0}}
+.combo{position:absolute;right:3%;top:30%;z-index:5;font-family:var(--f-sign);color:var(--gold);font-size:1.1rem;transform:rotate(6deg);
+  -webkit-text-stroke:2px var(--ink);paint-order:stroke}
+.lastcall{position:absolute;left:3%;top:46%;z-index:5;font-family:var(--f-sign);color:var(--paper);background:var(--red);padding:3px 8px;font-size:.85rem;transform:rotate(-4deg)}
+
+/* Controls */
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.act{font:inherit;color:var(--text);border:0;border-radius:14px;padding:12px 10px;cursor:pointer;display:grid;gap:2px;justify-items:center;
+  box-shadow:0 5px 0 rgba(0,0,0,.45);transition:transform .08s,box-shadow .08s;touch-action:manipulation}
+.act:active,.act.pressed{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+.act b{font-family:var(--f-sign);font-weight:400;font-size:clamp(1.15rem,3.6vw,1.45rem)}
+.act small{font-size:.78rem;opacity:.85}
+.act .key{font-size:.7rem;letter-spacing:.1em;opacity:.7;font-variant-numeric:tabular-nums}
+.serve{background:linear-gradient(#7a5236,#5a3a26)}
+.bonk{background:linear-gradient(#cf4134,#9a261d)}
+
+/* Overlay */
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;overflow-y:auto;background:rgba(14,10,8,.82);
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.card{background:var(--paper);color:var(--ink);border-radius:6px;width:min(100%,460px);padding:22px 22px 20px;box-shadow:0 18px 40px rgba(0,0,0,.6);margin:auto;
+  border-top:8px solid var(--red-d);display:grid;gap:14px}
+.card h1,.card h2{margin:0;font-family:var(--f-sign);font-weight:400;line-height:1.1;text-wrap:balance}
+.card h1{font-size:2.3rem;color:var(--red)}
+.card h2{font-size:1.7rem}
+.card .sub{font-family:var(--f-brush);font-size:1.4rem;color:#6b4a36;margin-top:-8px}
+.card p{margin:0;line-height:1.6;font-size:.92rem}
+.rules{display:grid;gap:8px}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;background:#e8d8b4;border-radius:8px;padding:8px 10px;font-size:.9rem;line-height:1.4}
+.rule .k{font-family:var(--f-sign);color:var(--paper);border-radius:6px;padding:6px 9px;font-size:.95rem;white-space:nowrap}
+.k.s{background:var(--wood)}.k.b{background:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{background:#e8d8b4;border-radius:8px;padding:8px 10px}
+.stat small{display:block;font-size:.72rem;color:#6b4a36}
+.stat b{font-family:var(--f-sign);font-weight:400;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.shop{display:grid;gap:8px}
+.shop h3{margin:4px 0 0;font-size:.8rem;letter-spacing:.08em;color:#6b4a36}
+.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid #cdb891;border-radius:8px;padding:8px 10px}
+.item b{font-size:.95rem}.item span{display:block;font-size:.78rem;color:#6b4a36;line-height:1.4}
+.item button{font:inherit;font-family:var(--f-sign);font-size:.9rem;background:var(--wood);color:var(--paper);border:0;border-radius:6px;padding:8px 10px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+.item button:disabled{background:#b9a684;cursor:not-allowed}
+.btn{font:inherit;font-family:var(--f-sign);font-size:1.3rem;background:var(--red);color:var(--paper);border:0;border-radius:8px;padding:14px;cursor:pointer;box-shadow:0 4px 0 var(--red-d)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--red-d)}
+.best{font-size:.8rem;color:#6b4a36;text-align:center}
+
+@media (max-width:480px){
+  .hud{grid-template-columns:1fr auto auto;gap:10px}
+  .hud .money{grid-column:1/-1;order:3;display:flex;gap:8px;align-items:baseline}
+  .sign{display:none}
+  .bubble{max-width:78%}
+}
+@media (prefers-reduced-motion:reduce){
+  .steam path,.stars{animation:none}
+  .cbody{transition-duration:.15s}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="hud">
+    <div class="day"><small>장사</small><b id="dayLabel">1일차</b><div class="timebar" aria-hidden="true"><i id="timeFill"></i></div></div>
+    <div class="money"><small>가게 금고</small><b id="money">0원</b></div>
+    <div><small>평판</small><b id="hearts" aria-label="평판">♥♥♥</b></div>
+    <button class="mute" id="mute" type="button">소리 켬</button>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="tags" aria-hidden="true">
+      <div class="tag"><b id="menuName">순대국밥</b><i id="menuPrice">9000</i></div>
+      <div class="tag"><b>수육</b><i>20000</i></div>
+      <div class="tag"><b>막걸리</b><i>5000</i></div>
+    </div>
+    <div class="sign" aria-hidden="true"><b>욕쟁이 할매 국밥</b><i>SINCE 1974</i></div>
+
+    <div class="cwrap" id="cwrap"><div class="cbody off-right" id="cbody"></div></div>
+    <div class="bubble" id="bubble" hidden><span id="btext"></span><div class="pat" id="pat"><i id="patFill"></i></div></div>
+    <div class="combo" id="combo" hidden></div>
+    <div class="lastcall" id="lastcall" hidden>마지막 손님</div>
+
+    <div class="counter"></div>
+    <div class="bowl" id="bowl" aria-hidden="true"></div>
+    <div class="ladle" id="ladle" aria-hidden="true"></div>
+  </main>
+
+  <div class="controls">
+    <button class="act serve" id="btnServe" type="button"><span class="key">← / A</span><b>국밥 내주기</b><small>공손한 손님</small></button>
+    <button class="act bonk" id="btnBonk" type="button"><span class="key">D / →</span><b>국자로 딱!</b><small>싸가지 없는 손님</small></button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="card" id="card"></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const won=n=>n.toLocaleString('ko-KR')+'원';
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function bag(arr){let b=[];return()=>{if(!b.length)b=shuffle(arr.slice());return b.pop()}}
+
+/* ---------- 대사 ---------- */
+const POLITE=["할머니, 순대국밥 한 그릇 부탁드려요!","안녕하세요~ 국밥 하나 주시겠어요?","할머니 오랜만이에요. 늘 먹던 걸로 주세요.","추운데 고생 많으세요. 국밥 하나요!","저 국밥 한 그릇 먹을 수 있을까요?","할머니, 국밥 냄새가 너무 좋아요. 하나 주세요!","혹시 아직 국밥 되나요? 하나 부탁드립니다.","어제 과음해서요… 해장으로 한 그릇만 부탁드려요.","다대기 조금만 넣어서 한 그릇 주실 수 있나요?","할머니, 저 취업했어요! 기념으로 국밥 하나요!","국밥 하나 주세요. 천천히 해주셔도 돼요~","엄마가 여기 꼭 가보라 했어요. 국밥 주세요!","야근하고 왔어요. 따뜻한 국밥 한 그릇 부탁드려요.","할머니 건강하시죠? 국밥 하나 주세요.","실례합니다~ 순대 많이 주시면 감사하겠습니다!","먹고 갈게요. 국밥 한 그릇 부탁드려요!","할머니 깍두기 진짜 맛있어요. 국밥 하나요!","배고파 죽겠어요 할머니ㅠㅠ 국밥 주세요!","이 동네 국밥은 여기가 최고래요. 하나 주세요!","할머니, 혼밥인데 괜찮을까요? 국밥 하나요."];
+const RUDE=["야, 국밥 하나.","할매, 국밥 빨리 내와.","아 왜 이렇게 늦어? 국밥 하나 빨리.","어이 할망구, 국밥.","국밥이나 줘. 맛은 기대도 안 해.","별점 1개 줄 수도 있는데? 국밥 줘 봐.","내가 누군 줄 알아? 국밥 대령해.","국밥 하나. 순대 적게 주면 리뷰 테러한다.","에이 꾀죄죄하네. 국밥 하나 줘.","할매, 수육도 서비스로 줘. 공짜로.","돈 많으니까 그냥 빨리 내놔.","국밥 줘. 그리고 말 걸지 마.","카드 안 돼? 아 짜증 나네. 국밥.","뭘 봐? 국밥 달라고.","야 할머니, 손님이 왕이야. 국밥.","반찬 리필 셀프 아니지? 갖다 놔. 국밥도.","이딴 데서 먹어야 돼? 국밥 하나.","숟가락 더러우면 가만 안 둔다. 국밥.","할매 귀 먹었어? 국밥 달라니까!","MSG 범벅 국밥 하나 주든가."];
+const TPOLITE=["할매요! 국밥 한 그릇 주이소~","할무니, 국밥 한 그릇 주시랑께요~","지나가다 냄새에 홀렸어요. 아 미쳤다, 한 그릇 주세요!","빨리 좀… 아, 아니에요! 천천히 주세요. 국밥 하나요!","할머니 국밥 미친 거 아니에요? 하나 더 주세요!","욕 많이 해주세요 할머니! 그게 이 집 맛이래요. 국밥 하나요!","아이고 할매, 내 또 왔심더. 늘 묵던 걸로 주이소!","할머니, 이거 완전 죽여주네요. 한 그릇 더 부탁드려요!"];
+const TRUDE=["국밥 주세요. 근데 여기 위생은 괜찮은 거 맞죠? ㅋ","국밥 주시고요, 제가 사진 찍는 동안 말 걸지 마세요.","국밥 하나요. 아, 할머니는 이런 거 몰라도 돼요.","저 인플루언서인데요, 공짜로 주시면 홍보해 드릴게요.","국밥 주세요. 솔직히 프랜차이즈가 더 맛있지 않아요?","요즘 누가 현금 써요? 할머니도 좀 배우세요. 국밥이요.","죄송한데 그릇 좀 깨끗한 걸로 주실래요? 여기가 좀 그래서요.","국밥 하나 주세요. 거스름돈은 됐어요, 불쌍해서."];
+const pP=bag(POLITE),pR=bag(RUDE),pTP=bag(TPOLITE),pTR=bag(TRUDE);
+const SMUG=["ㅋ 진작 줄 것이지.","거봐, 줄 거면서 ㅋㅋ","역시 손님이 왕이지~","맛없으면 별점 1개다."];
+const G={
+  serve:["옜다, 많이 묵어라!","식기 전에 퍼뜩 묵어!","순대 많이 넣었다. 남기면 혼난데이","아이고 이쁜 놈, 깍두기 더 주까?","배 든든히 채우고 가!","천천히 묵어라, 체한다"],
+  bonk:["이 썩을 놈아! 어디서 반말이여!","국밥 대신 국자나 처묵어라!","느그 엄마가 그래 가르치드나!","어디 할미한테 버릇없이!","왕은 무슨 왕이여! 썩 꺼져!","리뷰? 국자 리뷰나 받아라!"],
+  sorry:["아이고… 내 눈이 침침해서 그만…","미안타 미안타, 할미가 잘못했다","에구머니, 착한 놈을 때렸네"],
+  shame:["…저런 놈한테 국밥을 줬네","할미 체면 다 구겼다","에잇, 국자를 들었어야 했는데"],
+  late:["에잉, 가버렸네","굼뜨다 굼떠, 할미 늙었나 보다"]
+};
+
+/* ---------- 그림 ---------- */
+const SKINS=['#f2d0b1','#e8bb94','#d9a47a','#c48a62','#f5dcc4'];
+const HAIRS=['#1d1714','#3a2a20','#6b4a2f','#9a9a9a','#b5462f','#d8b36a'];
+const SHIRTS=['#3e6e8e','#8e3e4a','#4e7a4a','#5b4f86','#c08a2e','#2f3a46','#7d8a90'];
+const CAPS=['#c7372c','#2f5d8a','#e2b33c','#2b2b2b'];
+function randLook(){return{skin:rnd(SKINS),hair:rnd(HAIRS),shirt:rnd(SHIRTS),cap:rnd(CAPS),style:Math.floor(Math.random()*5),acc:rnd([0,0,1,2])}}
+function custSVG(L,mood){
+  const h=L.hair,ink='#1b1410';let back='',front='';
+  if(L.style===0)front=`<path d="M54 104 C50 58 80 44 100 44 C122 44 152 56 146 104 C138 82 120 70 100 72 C80 72 62 82 54 104Z" fill="${h}"/>`;
+  if(L.style===1){back=`<path d="M50 104 C46 56 76 42 100 42 C126 42 156 56 150 104 L158 200 L42 200Z" fill="${h}"/>`;front=`<path d="M54 100 C56 60 80 48 100 48 C122 48 146 60 146 100 C130 78 106 70 84 78 C72 82 60 90 54 100Z" fill="${h}"/>`}
+  if(L.style===2)front=`<path d="M52 94 C52 54 78 40 100 40 C124 40 148 54 148 94Z" fill="${L.cap}"/><path d="M52 92 L178 96 C178 105 160 107 148 104 L52 101Z" fill="${L.cap}"/><circle cx="100" cy="41" r="5" fill="${L.cap}"/>`;
+  if(L.style===3){for(let i=0;i<10;i++){const a=Math.PI*(1.0+i*0.111);front+=`<circle cx="${(100+52*Math.cos(a)).toFixed(1)}" cy="${(98+50*Math.sin(a)).toFixed(1)}" r="15" fill="${h}"/>`}}
+  if(L.style===4)front=`<path d="M52 112 C50 94 56 84 64 80 L66 106Z M148 112 C150 94 144 84 136 80 L134 106Z" fill="${h}"/>`;
+  const brow=(d)=>`<path d="${d}" stroke="${ink}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+  const dots=`<circle cx="82" cy="114" r="4.5" fill="${ink}"/><circle cx="118" cy="114" r="4.5" fill="${ink}"/>`;
+  let eyes='',mouth='',extra='';
+  switch(mood){
+    case 'happy':eyes=`<path d="M74 116 Q82 106 90 116 M110 116 Q118 106 126 116" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`+brow('M72 98 L92 95 M108 95 L128 98');
+      mouth=`<path d="M84 134 Q100 158 116 134Z" fill="#7a2a22"/><ellipse cx="70" cy="132" rx="9" ry="5" fill="#e88" opacity=".5"/><ellipse cx="130" cy="132" rx="9" ry="5" fill="#e88" opacity=".5"/>`;break;
+    case 'bonked':eyes=`<path d="M76 108 L88 120 M88 108 L76 120 M112 108 L124 120 M124 108 L112 120" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
+      mouth=`<ellipse cx="100" cy="142" rx="8" ry="10" fill="#5a1d18"/>`;
+      extra=`<ellipse cx="114" cy="54" rx="17" ry="15" fill="#e8705e"/><ellipse cx="109" cy="49" rx="5" ry="4" fill="#ffb4a6"/><g class="stars" fill="#f0c24a" font-size="22"><text x="54" y="44">★</text><text x="132" y="36">★</text><text x="92" y="22">★</text></g>`;break;
+    case 'sad':eyes=dots+brow('M72 104 L90 97 M110 97 L128 104')+`<path d="M80 121 Q75 134 80 141 Q86 134 82 121Z M118 121 Q113 134 118 141 Q124 134 120 121Z" fill="#7cc4ea"/>`;
+      mouth=`<path d="M86 148 Q100 136 114 148" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;break;
+    case 'smug':eyes=`<path d="M72 112 L92 112 M108 112 L128 112" stroke="${ink}" stroke-width="4" stroke-linecap="round"/><circle cx="84" cy="116" r="3.5" fill="${ink}"/><circle cx="120" cy="116" r="3.5" fill="${ink}"/>`+brow('M72 100 L92 100 M108 94 L128 98');
+      mouth=`<path d="M86 142 Q104 148 118 134" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;break;
+    case 'angry':eyes=dots+brow('M72 98 L92 106 M108 106 L128 98');mouth=`<path d="M86 148 Q100 138 114 148" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;break;
+    default:eyes=dots+brow('M72 101 L92 100 M108 100 L128 101');mouth=`<path d="M88 140 Q100 146 112 140" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+  }
+  let acc='';
+  if(L.acc===1)acc=`<g fill="none" stroke="#222" stroke-width="3"><circle cx="82" cy="114" r="12"/><circle cx="118" cy="114" r="12"/><path d="M94 114 L106 114"/></g>`;
+  if(L.acc===2&&mood!=='bonked'&&mood!=='sad')acc=`<g fill="#111"><rect x="68" y="104" width="28" height="18" rx="6"/><rect x="104" y="104" width="28" height="18" rx="6"/><rect x="94" y="109" width="12" height="4"/></g>`;
+  return `<svg viewBox="0 0 200 262" xmlns="http://www.w3.org/2000/svg">${back}
+  <path d="M22 262 C24 206 58 186 100 186 C142 186 176 206 178 262Z" fill="${L.shirt}"/>
+  <rect x="86" y="156" width="28" height="36" rx="8" fill="${L.skin}"/>
+  <path d="M84 188 L100 208 L116 188" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="4"/>
+  <circle cx="52" cy="118" r="10" fill="${L.skin}"/><circle cx="148" cy="118" r="10" fill="${L.skin}"/>
+  <ellipse cx="100" cy="112" rx="48" ry="56" fill="${L.skin}"/>
+  ${front}${eyes}${acc}${mouth}${extra}</svg>`;
+}
+const BOWL_SVG=`<svg viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg">
+  <g class="steam" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"><path d="M60 40 Q52 28 60 18 Q68 8 60 0"/><path d="M82 40 Q74 28 82 18 Q90 8 82 0"/><path d="M104 40 Q96 28 104 18 Q112 8 104 0"/></g>
+  <ellipse cx="80" cy="122" rx="56" ry="7" fill="rgba(0,0,0,.35)"/>
+  <path d="M12 56 Q18 120 80 120 Q142 120 148 56Z" fill="#4a2e22"/>
+  <path d="M22 78 Q80 92 138 78" stroke="#5f3c2c" stroke-width="3" fill="none"/>
+  <ellipse cx="80" cy="56" rx="68" ry="15" fill="#2b1a12"/>
+  <ellipse cx="80" cy="58" rx="60" ry="11" fill="#e7d0a0"/>
+  <ellipse cx="96" cy="57" rx="10" ry="4" fill="#c7372c"/>
+  <g fill="#6ea64a"><circle cx="58" cy="56" r="2.6"/><circle cx="68" cy="61" r="2.4"/><circle cx="76" cy="54" r="2.2"/><circle cx="112" cy="61" r="2.4"/></g>
+  <g fill="#7a4b3b"><ellipse cx="46" cy="60" rx="7" ry="3.5"/><ellipse cx="122" cy="55" rx="7" ry="3.5"/></g></svg>`;
+const LADLE_SVG=`<svg viewBox="0 0 140 260" xmlns="http://www.w3.org/2000/svg">
+  <defs><pattern id="momppae" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#a8325a"/>
+  <g fill="#f3b6c9"><circle cx="7" cy="7" r="3"/><circle cx="3.5" cy="7" r="2"/><circle cx="10.5" cy="7" r="2"/><circle cx="7" cy="3.5" r="2"/><circle cx="7" cy="10.5" r="2"/></g><circle cx="7" cy="7" r="1.6" fill="#f0c24a"/>
+  <g fill="#7fbf8a"><circle cx="19" cy="19" r="2.2"/><circle cx="22" cy="17" r="1.6"/></g></pattern></defs>
+  <path d="M96 36 L82 196" stroke="#8b9296" stroke-width="14" stroke-linecap="round"/>
+  <path d="M96 36 L82 196" stroke="#d7dcde" stroke-width="9" stroke-linecap="round"/>
+  <path d="M16 34 A42 36 0 0 0 100 34Z" fill="#c9cfd2" stroke="#8b9296" stroke-width="3"/>
+  <ellipse cx="58" cy="34" rx="42" ry="8" fill="#9aa1a5"/>
+  <path d="M30 56 A30 26 0 0 0 54 66" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/>
+  <rect x="40" y="206" width="84" height="70" rx="16" fill="url(#momppae)"/>
+  <ellipse cx="82" cy="196" rx="27" ry="22" fill="#d9a47a"/>
+  <path d="M62 188 Q82 182 102 188 M60 198 Q82 192 104 198" stroke="#b07e57" stroke-width="2.5" fill="none"/></svg>`;
+$('bowl').innerHTML=BOWL_SVG;$('ladle').innerHTML=LADLE_SVG;
+
+/* ---------- 소리 ---------- */
+let AC=null,muted=false;
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type='sine',v=.18,slide=0,delay=0){const a=ac();if(!a||muted)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(40,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.02)}
+function noise(d,v){const a=ac();if(!a||muted)return;const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate),c=b.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=(Math.random()*2-1)*(1-i/c.length);const s=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;s.buffer=b;g.gain.value=v;s.connect(f).connect(g).connect(a.destination);s.start()}
+const sfx={
+  bonk(){tone(1200,.05,'square',.12,-500);noise(.1,.5);tone(170,.18,'sine',.4,-90)},
+  serve(){tone(660,.12,'triangle',.16);tone(990,.2,'triangle',.14,0,.1)},
+  coin(){tone(1320,.08,'square',.06);tone(1760,.12,'square',.06,0,.07)},
+  wrong(){tone(220,.32,'sawtooth',.1,-90)},
+  bell(){tone(880,.5,'sine',.15);tone(1320,.6,'sine',.08,0,.02)}
+};
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'소리 끔':'소리 켬'};
+
+/* ---------- 게임 상태 ---------- */
+const DAY_LEN=40;
+const BOWL_NAMES=['순대국밥','특순대국밥','왕순대국밥','할매특선'];
+let S;
+function newGame(){S={day:1,money:0,earned:0,hearts:3,combo:0,bestCombo:0,timeLeft:DAY_LEN,running:false,paused:false,cust:null,up:{bowl:0,ladle:0,stove:0},d:{earned:0,served:0,bonked:0,miss:0},tot:{served:0,bonked:0,miss:0}}}
+const price=()=>9000+2000*S.up.bowl;
+const tipBonk=()=>2000+3000*S.up.ladle;
+const patience=()=>Math.max(3.2,7.5-(S.day-1)*0.7)*(1+0.15*S.up.stove);
+
+function renderHUD(){
+  $('dayLabel').textContent=S.day+'일차';
+  $('money').textContent=won(S.money);
+  $('hearts').textContent='♥'.repeat(Math.max(0,S.hearts))+'♡'.repeat(Math.max(0,3-S.hearts));
+  $('menuName').textContent=BOWL_NAMES[S.up.bowl];$('menuPrice').textContent=price();
+  const c=$('combo');if(S.combo>=2){c.hidden=false;c.textContent=S.combo+'연속!'}else c.hidden=true;
+}
+function bubble(t){$('btext').textContent=t;const b=$('bubble');b.hidden=false;b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
+function drawCust(mood){$('cbody').innerHTML=custSVG(S.cust.look,mood)}
+function spawn(){
+  if(!S.running)return;
+  const tp=S.day<2?0:Math.min(.45,.12+.11*(S.day-1));
+  const rude=Math.random()<.47,tricky=Math.random()<tp;
+  const line=rude?(tricky?pTR():pR()):(tricky?pTP():pP());
+  const p=patience();
+  S.cust={rude,tricky,line,p,left:p+.3,look:randLook(),done:false};
+  drawCust('neutral');
+  const b=$('cbody');b.className='cbody off-right';void b.offsetWidth;b.className='cbody';
+  $('pat').classList.remove('low');$('patFill').style.transform='scaleX(1)';$('pat').hidden=false;
+  bubble(line);
+}
+function stageXY(el,fy=.5){const s=$('stage').getBoundingClientRect(),r=el.getBoundingClientRect();return{x:r.left-s.left+r.width/2,y:r.top-s.top+r.height*fy}}
+function spawnFx(cls,text,x,y,ms){const d=document.createElement('div');d.className=cls;d.textContent=text;if(x!=null){d.style.left=x+'px';d.style.top=y+'px'}$('stage').appendChild(d);setTimeout(()=>d.remove(),ms)}
+function floatText(t){spawnFx('float',t,null,null,1250)}
+function shout(t,kind){$('stage').querySelectorAll('.shout').forEach(e=>e.remove());const d=document.createElement('div');d.className='shout '+kind;d.textContent=t;$('stage').appendChild(d);setTimeout(()=>d.remove(),1550)}
+function note(t,kind){$('stage').querySelectorAll('.note').forEach(e=>e.remove());const d=document.createElement('div');d.className='note '+kind;d.textContent=t;$('stage').appendChild(d);setTimeout(()=>d.remove(),2650)}
+function impact(){const p=stageXY($('cwrap'),.2);spawnFx('burst',rnd(['딱!','빡!','쾅!']),p.x,p.y,650);
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)$('stage').animate([{transform:'translate(0,0)'},{transform:'translate(-8px,4px)'},{transform:'translate(7px,-3px)'},{transform:'translate(-4px,2px)'},{transform:'translate(0,0)'}],{duration:260})}
+let flyBowl=null;
+function serveAnim(){
+  const bowl=$('bowl'),s=$('stage').getBoundingClientRect(),r=bowl.getBoundingClientRect();
+  const c=bowl.cloneNode(true);c.removeAttribute('id');c.style.left=(r.left-s.left)+'px';c.style.bottom=(s.bottom-r.bottom)+'px';c.style.width=r.width+'px';c.style.zIndex=4;
+  $('stage').appendChild(c);flyBowl=c;
+  const dx=s.width/2-(r.left-s.left)-r.width/2,dy=-(s.height*.06);
+  c.animate([{transform:'translate(0,0)'},{transform:`translate(${dx}px,${dy-30}px)`,offset:.6},{transform:`translate(${dx}px,${dy}px)`}],{duration:320,easing:'ease-out',fill:'forwards'});
+}
+function clearBowl(){if(flyBowl){const c=flyBowl;flyBowl=null;c.animate([{opacity:1},{opacity:0}],{duration:300,fill:'forwards'});setTimeout(()=>c.remove(),320)}}
+function swing(){const l=$('ladle');l.classList.remove('swing');void l.offsetWidth;l.classList.add('swing')}
+function gain(n,label){S.money+=n;S.earned+=n;S.d.earned+=n;floatText(label)}
+function loseHeart(){S.hearts--;S.combo=0;S.d.miss++;const h=$('hearts');h.classList.remove('hit');void h.offsetWidth;h.classList.add('hit')}
+
+function act(kind){
+  const c=S&&S.cust;if(!S||!S.running||S.paused||!c||c.done)return;
+  c.done=true;ac();
+  const btn=kind==='serve'?$('btnServe'):$('btnBonk');btn.classList.add('pressed');setTimeout(()=>btn.classList.remove('pressed'),120);
+  $('pat').hidden=true;
+  if(kind==='serve')serveAnim();else swing();
+  setTimeout(()=>{
+    if(kind==='serve'&&!c.rude){
+      const tip=Math.min(S.combo,10)*500,bonus=c.tricky?1000:0;
+      gain(price()+tip+bonus,`+${won(price()+tip+bonus)}`);S.combo++;S.d.served++;drawCust('happy');sfx.serve();setTimeout(sfx.coin,180);
+      shout(rnd(G.serve),'serve');if(c.tricky)note('말투는 투박해도 예의 바른 손님. 눈썰미 보너스 +1,000원','good');
+      bubble(rnd(['감사합니다~ 잘 먹을게요!','와, 순대 진짜 많다!','할머니 최고예요!']));leave('left',850);
+    }else if(kind==='bonk'&&c.rude){
+      const bonus=c.tricky?1000:0;
+      gain(tipBonk()+bonus,`참교육! 구경꾼 박수 +${won(tipBonk()+bonus)}`);S.combo++;S.d.bonked++;drawCust('bonked');impact();sfx.bonk();setTimeout(sfx.coin,250);
+      shout(rnd(G.bonk),'bonk');if(c.tricky)note('존댓말 쓴다고 다 공손한 건 아니죠. 눈썰미 보너스 +1,000원','good');
+      $('bubble').hidden=true;leave('fly',380);
+    }else if(kind==='bonk'){
+      loseHeart();drawCust('sad');impact();sfx.bonk();setTimeout(sfx.wrong,160);
+      bubble('흑… 저 공손하게 말했는데요…');shout(rnd(G.sorry),'sorry');note('공손한 손님이었어요. 평판 ♥ -1','bad');leave('left',1300);
+    }else{
+      S.money+=price();S.earned+=price();S.d.earned+=price();loseHeart();drawCust('smug');sfx.wrong();
+      bubble(rnd(SMUG));shout(rnd(G.shame),'sorry');note('버릇없는 손님이었어요. 국자 맛을 보여줬어야죠. 평판 ♥ -1','bad');leave('left',1300);
+    }
+    S.bestCombo=Math.max(S.bestCombo,S.combo);renderHUD();
+  },kind==='bonk'?170:300);
+}
+function timeout(){
+  const c=S.cust;c.done=true;$('pat').hidden=true;drawCust('angry');
+  bubble(c.rude?rnd(['늙어서 느려터졌네 ㅉ','장사 안 해? 간다 간다']):rnd(['바쁘신가 봐요… 다음에 올게요','많이 바쁘시네요. 갈게요…']));
+  loseHeart();sfx.wrong();shout(rnd(G.late),'sorry');
+  note(c.rude?'너무 오래 세워뒀어요. 버릇없는 손님이니 국자였죠. ♥ -1':'너무 오래 세워뒀어요. 공손한 손님이니 국밥이었죠. ♥ -1','bad');
+  renderHUD();leave('left',1100);
+}
+function leave(kind,delay){
+  setTimeout(()=>{
+    const b=$('cbody');if(kind!=='fly')$('bubble').hidden=true;
+    b.classList.add(kind==='fly'?'fly':'off-left');clearBowl();
+    setTimeout(next,kind==='fly'?700:550);
+  },delay);
+}
+function next(){
+  S.cust=null;
+  if(S.hearts<=0)return gameOver();
+  if(S.timeLeft<=0)return endDay();
+  spawn();
+}
+
+/* ---------- 루프 ---------- */
+let last=0;
+function loop(t){
+  const dt=last?Math.min(.1,(t-last)/1000):0;last=t;
+  if(S&&S.running&&!S.paused){
+    S.timeLeft=Math.max(0,S.timeLeft-dt);
+    $('timeFill').style.transform=`scaleX(${S.timeLeft/DAY_LEN})`;
+    $('lastcall').hidden=S.timeLeft>0;
+    const c=S.cust;
+    if(c&&!c.done){c.left-=dt;const r=Math.max(0,Math.min(1,c.left/c.p));$('patFill').style.transform=`scaleX(${r})`;$('pat').classList.toggle('low',r<.35);if(c.left<=0)timeout()}
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+document.addEventListener('visibilitychange',()=>{if(S)S.paused=document.hidden});
+
+/* ---------- 화면 ---------- */
+function loadBest(){try{return JSON.parse(localStorage.getItem('gukbap-best'))||null}catch(e){return null}}
+function saveBest(b){try{localStorage.setItem('gukbap-best',JSON.stringify(b))}catch(e){}}
+function bestLine(){const b=loadBest();return b?`최고 기록: ${b.day}일차까지 · 총매상 ${won(b.earned)}`:'아직 기록이 없어요'}
+function showCard(html,primary){$('card').innerHTML=html;$('overlay').hidden=false;const p=$('card').querySelector('.btn');if(p){p.onclick=primary;setTimeout(()=>p.focus(),50)}}
+function hideCard(){$('overlay').hidden=true}
+
+function startScreen(){
+  showCard(`<div><h1>욕쟁이 할매 국밥</h1></div><div class="sub">오늘도 국자 들고 문 연다</div>
+  <p>할매는 국밥 맛도 일품, 성질도 일품. 손님 말투를 듣고 바로 판단하세요.</p>
+  <div class="rules">
+    <div class="rule"><span class="k s">← 국밥</span><span>공손하게 주문한 손님에겐 국밥을 내줘요.</span></div>
+    <div class="rule"><span class="k b">국자 →</span><span>싸가지 없는 손님은 국자로 딱! 구경꾼이 박수 팁을 줘요.</span></div>
+  </div>
+  <p>잘못 판단하거나 손님을 오래 세워두면 평판 ♥이 깎이고, ♥이 바닥나면 가게 문을 닫아요. 2일차부터는 <b>존댓말 쓰는 진상</b>과 <b>말투만 거친 단골</b>이 섞여 나옵니다.</p>
+  <button class="btn" type="button">가게 문 열기</button><div class="best">${bestLine()}</div>`,()=>{newGame();openDay()});
+}
+function openDay(){
+  S.d={earned:0,served:0,bonked:0,miss:0};S.timeLeft=DAY_LEN;S.running=true;S.cust=null;
+  renderHUD();hideCard();ac();sfx.bell();setTimeout(spawn,500);
+}
+function addTot(){S.tot.served+=S.d.served;S.tot.bonked+=S.d.bonked;S.tot.miss+=S.d.miss}
+const SHOP=[
+  {id:'bowl',name:'뚝배기 업그레이드',desc:()=>S.up.bowl<3?`한 그릇 ${won(price())} → ${won(price()+2000)}`:'최고 등급 달성',cost:()=>20000*(S.up.bowl+1),ok:()=>S.up.bowl<3},
+  {id:'ladle',name:'무쇠 국자',desc:()=>S.up.ladle<3?`참교육 박수 팁 ${won(tipBonk())} → ${won(tipBonk()+3000)}`:'최고 등급 달성',cost:()=>15000*(S.up.ladle+1),ok:()=>S.up.ladle<3},
+  {id:'stove',name:'연탄 난로',desc:()=>S.up.stove<3?'가게가 따뜻해서 손님이 15% 더 오래 기다려요':'최고 등급 달성',cost:()=>25000*(S.up.stove+1),ok:()=>S.up.stove<3},
+  {id:'heart',name:'동네 인심 회복',desc:()=>'평판 ♥ 하나 회복 (최대 3)',cost:()=>30000,ok:()=>S.hearts<3},
+];
+function shopHTML(){return SHOP.map(it=>{const c=it.cost(),ok=it.ok();return`<div class="item"><div><b>${it.name}</b><span>${it.desc()}</span></div><button type="button" data-buy="${it.id}" ${(!ok||S.money<c)?'disabled':''}>${ok?won(c):'완료'}</button></div>`}).join('')}
+function endDay(){
+  S.running=false;addTot();$('lastcall').hidden=true;$('bubble').hidden=true;
+  const tip=S.day===1?'<p>내일부터 손님이 더 급해지고, 말투로 헷갈리게 하는 손님이 섞여 나와요.</p>':'';
+  const render=()=>{showCard(`<h2>${S.day}일차 장사 끝</h2>
+    <div class="stats"><div class="stat"><small>오늘 매상</small><b>${won(S.d.earned)}</b></div><div class="stat"><small>가게 금고</small><b>${won(S.money)}</b></div>
+    <div class="stat"><small>국밥 판 그릇</small><b>${S.d.served}그릇</b></div><div class="stat"><small>참교육</small><b>${S.d.bonked}명</b></div></div>
+    ${tip}<div class="shop"><h3>장사 밑천에 투자하기</h3>${shopHTML()}</div>
+    <button class="btn" type="button">${S.day+1}일차 문 열기</button>`,()=>{S.day++;openDay()});
+    $('card').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>buy(b.dataset.buy,render));};
+  sfx.bell();render();
+}
+function buy(id,render){
+  const it=SHOP.find(x=>x.id===id),c=it.cost();if(!it.ok()||S.money<c)return;
+  S.money-=c;if(id==='heart')S.hearts++;else S.up[id]++;sfx.coin();renderHUD();render();
+}
+function gameOver(){
+  S.running=false;addTot();$('lastcall').hidden=true;$('bubble').hidden=true;
+  const prev=loadBest();const isBest=!prev||S.earned>prev.earned;if(isBest)saveBest({earned:S.earned,day:S.day});
+  showCard(`<h2>가게 문 닫았다</h2><div class="sub">"내일 다시 열면 되지, 뭘 울고 있어!"</div>
+  <div class="stats"><div class="stat"><small>버틴 날</small><b>${S.day}일차</b></div><div class="stat"><small>총 매상</small><b>${won(S.earned)}</b></div>
+  <div class="stat"><small>국밥 판 그릇</small><b>${S.tot.served}그릇</b></div><div class="stat"><small>참교육</small><b>${S.tot.bonked}명</b></div>
+  <div class="stat"><small>최고 연속</small><b>${S.bestCombo}연속</b></div><div class="stat"><small>실수</small><b>${S.tot.miss}번</b></div></div>
+  <button class="btn" type="button">다시 장사하기</button><div class="best">${isBest?'새 최고 기록이에요!':bestLine()}</div>`,()=>{newGame();openDay()});
+}
+
+/* ---------- 입력 ---------- */
+$('btnServe').onclick=()=>act('serve');
+$('btnBonk').onclick=()=>act('bonk');
+document.addEventListener('keydown',e=>{
+  if(!$('overlay').hidden){if(e.key==='Enter'||e.key===' '){const p=$('card').querySelector('.btn');if(p&&document.activeElement!==p){e.preventDefault();p.click()}}return}
+  const k=e.key.toLowerCase();
+  if(k==='arrowleft'||k==='a'||k==='ㅁ'){e.preventDefault();act('serve')}
+  else if(k==='arrowright'||k==='d'||k==='ㅇ'||k===' '){e.preventDefault();act('bonk')}
+});
+
+newGame();renderHUD();
+/* 첫 화면 뒤에 보이는 예시 손님 */
+S.cust={look:randLook(),done:true};drawCust('neutral');$('cbody').className='cbody';
+$('btext').textContent='할머니, 순대국밥 한 그릇 부탁드려요!';$('bubble').hidden=false;$('pat').hidden=true;S.cust=null;
+startScreen();
+</script>
+
+</body>
+</html>
